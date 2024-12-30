@@ -134,9 +134,17 @@
                 const selectedSheetName = sheetSelector.value;
                 const worksheet = workbook.Sheets[selectedSheetName];
 
+                // Calculate the last row with data
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                let lastRow = jsonData.length;
+
+                while (lastRow > 0 && (!jsonData[lastRow - 1] || jsonData[lastRow - 1].every(cell => cell === undefined || cell === ''))) {
+                    lastRow--;
+                }
+
                 const newData = [columnNames.map(column => document.getElementById(column).value)];
 
-                XLSX.utils.sheet_add_aoa(worksheet, newData, { origin: -1 });
+                XLSX.utils.sheet_add_aoa(worksheet, newData, { origin: lastRow });
 
                 const updatedData = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
 
