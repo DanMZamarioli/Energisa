@@ -47,22 +47,31 @@
 </head>
 <body>
     <img src="logoEner.png" alt="Logo" class="logo">
-    <input type="file" id="upload" accept=".xlsx">
-    <button onclick="loadExcel()">Carregar Excel</button>
+    <button onclick="openFile()">Open Excel File</button>
     <div id="sheetSelectorContainer"></div>
     <div id="formContainer"></div>
-    <button onclick="processExcel()">Processar</button>
+    <button onclick="processExcel()">Process Excel</button>
     <script>
         let columnNames = [];
+        let workbook;
+        let fileHandle;
 
-        function loadExcel() {
-            const fileInput = document.getElementById('upload');
-            const file = fileInput.files[0];
+        async function openFile() {
+            [fileHandle] = await window.showOpenFilePicker({
+                types: [{
+                    description: 'Excel Files',
+                    accept: {
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+                    }
+                }]
+            });
+
+            const file = await fileHandle.getFile();
             const reader = new FileReader();
 
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+                workbook = XLSX.read(data, { type: 'array' });
 
                 const sheetSelectorContainer = document.getElementById('sheetSelectorContainer');
                 sheetSelectorContainer.innerHTML = '';
@@ -113,14 +122,13 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function processExcel() {
-            const fileInput = document.getElementById('upload');
-            const file = fileInput.files[0];
+        async function processExcel() {
+            const file = await fileHandle.getFile();
             const reader = new FileReader();
 
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+                workbook = XLSX.read(data, { type: 'array' });
 
                 const sheetSelector = document.getElementById('sheetSelector');
                 const selectedSheetName = sheetSelector.value;
@@ -130,7 +138,11 @@
 
                 XLSX.utils.sheet_add_aoa(worksheet, newData, { origin: -1 });
 
-                XLSX.writeFile(workbook, "DemandasGeradas.xlsx");
+                const updatedData = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+                const writable = await fileHandle.createWritable();
+                await writable.write(updatedData);
+                await writable.close();
             };
 
             reader.readAsArrayBuffer(file);
